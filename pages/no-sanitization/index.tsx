@@ -4,7 +4,7 @@ export default function Sanitization() {
     const [file, setFile] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
     const [dragActive, setDragActive] = useState(false);
-    const [sanitizedFilePath, setSanitizedFilePath] = useState('');
+    const [uploadedFilePath, setUploadedFilePath] = useState('');
 
     const handleFileChange = (e) => {
         setFile(e.target.files[0]);
@@ -35,19 +35,19 @@ export default function Sanitization() {
         const formData = new FormData();
         formData.append('file', file);
 
-        const res = await fetch('/api/uploadSanitization', {
+        const res = await fetch('/api/uploadNoSanitization', {
             method: 'POST',
             body: formData,
         });
 
         if (res.ok) {
             const result = await res.json();
-            alert('File uploaded and sanitized successfully!');
-            setSanitizedFilePath(result.sanitizedFilePath);
+            alert('File uploaded successfully!');
+            setUploadedFilePath(result.filePath);
             setFile(null);  // Clear the file input
             e.target.reset();  // Reset the form
         } else {
-            alert('File upload or sanitization failed!');
+            alert('File upload failed!');
         }
 
         setIsUploading(false);
@@ -56,7 +56,7 @@ export default function Sanitization() {
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
             <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-2xl">
-                <h1 className="text-2xl mb-4 text-center text-gray-900 dark:text-gray-100">Upload File</h1>
+                <h1 className="text-2xl mb-4 text-center text-gray-900 dark:text-gray-100">Upload File without Votiro RestAPI</h1>
                 <form onSubmit={handleSubmit} className="flex flex-col items-center">
                     <div 
                         className={`border-2 border-dashed rounded-lg p-8 w-full text-center ${dragActive ? 'border-blue-500' : 'border-gray-300 dark:border-gray-600'} ${isUploading ? 'pointer-events-none' : ''}`}
@@ -86,9 +86,9 @@ export default function Sanitization() {
                         {isUploading ? 'Uploading...' : 'Upload'}
                     </button>
                 </form>
-                {sanitizedFilePath && (
+                {uploadedFilePath && (
                     <div className="mt-4">
-                        <a href={sanitizedFilePath} target="_blank" rel="noopener noreferrer" className="text-blue-500">View Sanitized File</a>
+                        <a href={uploadedFilePath} target="_blank" rel="noopener noreferrer" className="text-blue-500">View Uploaded File</a>
                     </div>
                 )}
             </div>

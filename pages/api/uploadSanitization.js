@@ -10,7 +10,7 @@ export const config = {
     },
 };
 
-const uploadDir = path.join(process.cwd(), 'pages/sanitization/uploads');
+const uploadDir = path.join(process.cwd(), 'public/uploads/sanitization');
 
 // Ensure upload directory exists
 if (!fs.existsSync(uploadDir)) {
@@ -88,10 +88,10 @@ const fetchSanitizedFile = async (documentId, originalFileName, votiroApiHost, v
             responseType: 'arraybuffer'
         });
 
-        const sanitizedFilePath = path.join(process.cwd(), 'pages/sanitization/uploads', `sanitized-${originalFileName}`);
+        const sanitizedFilePath = path.join(process.cwd(), 'public/uploads/sanitization', `sanitized-${originalFileName}`);
         fs.writeFileSync(sanitizedFilePath, response.data);
 
-        res.status(200).json({ message: 'File sanitized and saved successfully!' });
+        res.status(200).json({ message: 'File sanitized and saved successfully!', sanitizedFilePath: `/uploads/sanitization/sanitized-${originalFileName}` });
 
     } catch (error) {
         if (error.response && error.response.status === 404 && attempts < 5) {
