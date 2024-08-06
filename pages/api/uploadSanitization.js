@@ -10,16 +10,21 @@ export const config = {
     },
 };
 
-const uploadDir = path.join(process.cwd(), 'public/uploads/sanitization');
+const localUploadDir = path.join(process.cwd(), 'public/uploads/sanitization');
+const xamppUploadDir = 'C:/xampp/htdocs/uploads/sanitization';
 
-// Ensure upload directory exists
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
+// Ensure both upload directories exist
+if (!fs.existsSync(localUploadDir)) {
+    fs.mkdirSync(localUploadDir, { recursive: true });
+}
+
+if (!fs.existsSync(xamppUploadDir)) {
+    fs.mkdirSync(xamppUploadDir, { recursive: true });
 }
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, uploadDir);
+        cb(null, localUploadDir);
     },
     filename: (req, file, cb) => {
         cb(null, file.originalname); // Keep the original filename
@@ -35,7 +40,7 @@ const handler = async (req, res) => {
             return res.status(500).json({ message: 'File upload failed' });
         }
 
-        const filePath = path.join(uploadDir, req.file.filename);
+        const filePath = path.join(localUploadDir, req.file.filename);
 
         const votiroApiHost = process.env.VOTIRO_API_HOST;
         const votiroApiKey = process.env.VOTIRO_API_KEY;
@@ -88,8 +93,12 @@ const fetchSanitizedFile = async (documentId, originalFileName, votiroApiHost, v
             responseType: 'arraybuffer'
         });
 
-        const sanitizedFilePath = path.join(process.cwd(), 'public/uploads/sanitization', `sanitized-${originalFileName}`);
+        const sanitizedFilePath = path.join(localUploadDir, `sanitized-${originalFileName}`);
         fs.writeFileSync(sanitizedFilePath, response.data);
+
+        // Copy the sanitized file to the XAMPP directory
+        const xamppSanitizedFilePath = path.join(xamppUploadDir, `sanitized-${originalFileName}`);
+        fs.copyFileSync(sanitizedFilePath, xamppSanitizedFilePath);
 
         res.status(200).json({ message: 'File sanitized and saved successfully!', sanitizedFilePath: `/uploads/sanitization/sanitized-${originalFileName}` });
 

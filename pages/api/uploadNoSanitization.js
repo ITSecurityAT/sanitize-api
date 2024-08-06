@@ -8,16 +8,21 @@ export const config = {
     },
 };
 
-const uploadDir = path.join(process.cwd(), 'public/uploads/no-sanitization');
+const localUploadDir = path.join(process.cwd(), 'public/uploads/no-sanitization');
+const xamppUploadDir = 'C:/xampp/htdocs/uploads/no-sanitization';
 
-// Ensure upload directory exists
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
+// Ensure both upload directories exist
+if (!fs.existsSync(localUploadDir)) {
+    fs.mkdirSync(localUploadDir, { recursive: true });
+}
+
+if (!fs.existsSync(xamppUploadDir)) {
+    fs.mkdirSync(xamppUploadDir, { recursive: true });
 }
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, uploadDir);
+        cb(null, localUploadDir); // Save to local directory first
     },
     filename: (req, file, cb) => {
         cb(null, file.originalname); // Keep the original filename
@@ -27,15 +32,24 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 const handler = async (req, res) => {
-    upload.single('file')(req, res, (err) => {
+    upload.single('file')(req, res, async (err) => {
         if (err) {
             console.error(err);
             return res.status(500).json({ message: 'File upload failed' });
         }
 
-        const filePath = `/uploads/no-sanitization/${req.file.filename}`;
+        const localFilePath = path.join(localUploadDir, req.file.filename);
+        const xamppFilePath = path.join(xamppUploadDir, req.file.filename);
 
-        res.status(200).json({ message: 'File uploaded successfully!', filePath });
+        // Copy the file to the XAMPP directory
+        fs.copyFile(localFilePath, xamppFilePath, (copyErr) => {
+            if (copyErr) {
+                console.error('Error copying file to XAMPP directory:', copyErr);
+                return res.status(500).json({ message: 'File upload failed' });
+            }
+
+            res.status(200).json({ message: 'File uploaded successfully!', filePath: `/uploads/no-sanitization/${req.file.filename}` });
+        });
     });
 };
 

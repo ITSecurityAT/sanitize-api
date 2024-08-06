@@ -1,0 +1,19 @@
+# Dockerfile-php
+FROM php:5.6.37-apache
+
+# Enable necessary Apache modules
+RUN a2enmod rewrite
+
+# Create the necessary directories
+RUN mkdir -p /var/www/html/public/uploads/no-sanitization
+
+# Copy the uploads directory to Apache's document root
+COPY ./public/uploads/no-sanitization /var/www/html/public/uploads/no-sanitization
+
+# Set the working directory
+WORKDIR /var/www/html/public/uploads/no-sanitization
+
+# Grant necessary permissions
+RUN chown -R www-data:www-data /var/www/html
+
+EXPOSE 80

@@ -1,0 +1,23 @@
+version: '3.7'
+
+services:
+  php:
+    build:
+      context: .
+      dockerfile: Dockerfile-php
+    container_name: php-container
+    ports:
+      - "8080:80"
+    volumes:
+      - ./public/uploads/no-sanitization:/var/www/html/public/uploads/no-sanitization
+
+  nextjs:
+    build:
+      context: .
+      dockerfile: Dockerfile-nextjs
+    container_name: nextjs-container
+    volumes:
+      - ./:/app
+    ports:
+      - "3000:3000"
+    command: npm run dev

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Head from 'next/head';
 
 export default function Sanitization() {
     const [file, setFile] = useState(null);
@@ -55,6 +56,10 @@ export default function Sanitization() {
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
+            <Head>
+                <title>Sanitization Web</title>
+                <meta property="og:title" content="My page title" key="title" />
+            </Head>
             <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-2xl">
                 <h1 className="text-2xl mb-4 text-center text-gray-900 dark:text-gray-100">Upload File</h1>
                 <form onSubmit={handleSubmit} className="flex flex-col items-center">
@@ -88,7 +93,7 @@ export default function Sanitization() {
                 </form>
                 {sanitizedFilePath && (
                     <div className="mt-4">
-                        <a href={sanitizedFilePath} target="_blank" rel="noopener noreferrer" className="text-blue-500">View Sanitized File</a>
+                        <a href={`http://localhost:80${sanitizedFilePath}`} target="_blank" rel="noopener noreferrer" className="text-blue-500">View Sanitized File</a>
                     </div>
                 )}
             </div>
