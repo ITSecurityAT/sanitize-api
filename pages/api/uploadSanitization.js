@@ -6,14 +6,13 @@ import FormData from 'form-data';
 
 export const config = {
     api: {
-        bodyParser: false, // Disabling bodyParser to use multer
+        bodyParser: false,
     },
 };
 
 const localUploadDir = path.join(process.cwd(), 'public/uploads/sanitization');
 const xamppUploadDir = 'C:/xampp/htdocs/uploads/sanitization';
 
-// Ensure both upload directories exist
 if (!fs.existsSync(localUploadDir)) {
     fs.mkdirSync(localUploadDir, { recursive: true });
 }
@@ -27,7 +26,7 @@ const storage = multer.diskStorage({
         cb(null, localUploadDir);
     },
     filename: (req, file, cb) => {
-        cb(null, file.originalname); // Keep the original filename
+        cb(null, file.originalname); 
     },
 });
 
@@ -41,11 +40,11 @@ const handler = async (req, res) => {
         }
 
         const filePath = path.join(localUploadDir, req.file.filename);
+        const password = req.body.password; 
 
         const votiroApiHost = process.env.VOTIRO_API_HOST;
         const votiroApiKey = process.env.VOTIRO_API_KEY;
 
-        // Send the file to Votiro for sanitization
         try {
             const formData = new FormData();
             formData.append('file', fs.createReadStream(filePath));
@@ -53,7 +52,8 @@ const handler = async (req, res) => {
                 ChannelType: 'FileConnector',
                 ChannelId: '30acc6eb-16d9-4133-ae43-0f5b6d40a318',
                 ChannelName: 'Nextjs-API',
-                PolicyName: 'Default Policy'
+                PolicyName: 'Default Policy',
+                Password: password
             }));
 
             const votiroResponse = await axios.post(`${votiroApiHost}/upload`, formData, {
@@ -67,10 +67,8 @@ const handler = async (req, res) => {
             console.log('Votiro response document ID:', documentId);
 
             if (documentId) {
-                await fetchSanitizedFile(documentId, req.file.filename, votiroApiHost, votiroApiKey, res);
+                await checkFileStatus(documentId, votiroApiHost, votiroApiKey, req.file.filename, res);
             }
-
-            // Remove the original file if needed
             fs.unlinkSync(filePath);
 
         } catch (error) {
@@ -80,7 +78,60 @@ const handler = async (req, res) => {
     });
 };
 
-const fetchSanitizedFile = async (documentId, originalFileName, votiroApiHost, votiroApiKey, res, attempts = 0) => {
+const checkFileStatus = async (documentId, votiroApiHost, votiroApiKey, originalFileName, res, attempts = 0) => {
+    const statusHeaders = {
+        'Authorization': `Bearer ${votiroApiKey}`,
+        'Accept-Encoding': 'gzip, deflate, br',
+        'X-Frame-Options': 'DENY'
+    };
+
+    try {
+        const statusResponse = await axios.get(`${votiroApiHost}/status/${documentId}`, {
+            headers: statusHeaders
+        });
+
+        const status = statusResponse.data.trim();
+        console.log('Status: ', status);
+
+        switch (status) {
+            case 'Done':
+                await fetchSanitizedFile(documentId, originalFileName, votiroApiHost, votiroApiKey, res);
+                break;
+            case 'Processing':
+                if (attempts < 10) {
+                    console.log('File is still processing, retrying...');
+                    setTimeout(() => checkFileStatus(documentId, votiroApiHost, votiroApiKey, originalFileName, res, attempts + 1), 3000);
+                } else {
+                    console.error('File processing took too long');
+                    res.status(500).json({ message: 'File processing took too long' });
+                }
+                break;
+            case 'Blocked':
+                console.error('File was blocked by Votiro');
+                res.status(400).json({ message: 'File was blocked by Votiro' });
+                break;
+            case 'Error':
+                console.error('An error occurred while processing the file');
+                res.status(500).json({ message: 'An error occurred while processing the file' });
+                break;
+            case 'NotExist':
+                console.error('File does not exist in Votiro');
+                res.status(404).json({ message: 'File does not exist in Votiro' });
+                break;
+            default:
+                console.error('Unknown status received from Votiro:', status);
+                res.status(500).json({ message: 'Unknown status received from Votiro' });
+                break;
+        }
+
+    } catch (error) {
+        console.error('Error checking file status:', error);
+        res.status(500).json({ message: 'Error checking file status', error: error.message });
+        throw error;
+    }
+};
+
+const fetchSanitizedFile = async (documentId, originalFileName, votiroApiHost, votiroApiKey, res) => {
     const downloadHeaders = {
         'Authorization': `Bearer ${votiroApiKey}`,
         'Accept-Encoding': 'gzip, deflate, br',
@@ -96,20 +147,14 @@ const fetchSanitizedFile = async (documentId, originalFileName, votiroApiHost, v
         const sanitizedFilePath = path.join(localUploadDir, `sanitized-${originalFileName}`);
         fs.writeFileSync(sanitizedFilePath, response.data);
 
-        // Copy the sanitized file to the XAMPP directory
         const xamppSanitizedFilePath = path.join(xamppUploadDir, `sanitized-${originalFileName}`);
         fs.copyFileSync(sanitizedFilePath, xamppSanitizedFilePath);
 
         res.status(200).json({ message: 'File sanitized and saved successfully!', sanitizedFilePath: `/uploads/sanitization/sanitized-${originalFileName}` });
 
     } catch (error) {
-        if (error.response && error.response.status === 404 && attempts < 5) {
-            console.log('Sanitized file not ready, retrying...');
-            setTimeout(() => fetchSanitizedFile(documentId, originalFileName, votiroApiHost, votiroApiKey, res, attempts + 1), 2000);
-        } else {
-            console.error('Error downloading sanitized file:', error);
-            res.status(500).json({ message: 'Error downloading sanitized file', error: error.message });
-        }
+        console.error('Error downloading sanitized file:', error);
+        res.status(500).json({ message: 'Error downloading sanitized file', error: error.message });
     }
 };
 

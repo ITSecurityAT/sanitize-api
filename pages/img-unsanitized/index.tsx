@@ -3,17 +3,12 @@ import Head from 'next/head';
 
 export default function Sanitization() {
     const [file, setFile] = useState(null);
-    const [password, setPassword] = useState('');
     const [isUploading, setIsUploading] = useState(false);
     const [dragActive, setDragActive] = useState(false);
-    const [sanitizedFilePath, setSanitizedFilePath] = useState('');
+    const [uploadedFilePath, setUploadedFilePath] = useState('');
 
     const handleFileChange = (e) => {
         setFile(e.target.files[0]);
-    };
-
-    const handlePasswordChange = (e) => {
-        setPassword(e.target.value);
     };
 
     const handleDragOver = (e) => {
@@ -40,22 +35,20 @@ export default function Sanitization() {
 
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('password', password);  // Append the password to the FormData object
 
-        const res = await fetch('/api/uploadSanitization', {
+        const res = await fetch('/api/uploadNoSanitization', {
             method: 'POST',
             body: formData,
         });
 
         if (res.ok) {
             const result = await res.json();
-            alert('File uploaded and sanitized successfully!');
-            setSanitizedFilePath(result.sanitizedFilePath);
+            alert('File uploaded successfully!');
+            setUploadedFilePath(result.filePath);
             setFile(null);  // Clear the file input
-            setPassword('');  // Clear the password
             e.target.reset();  // Reset the form
         } else {
-            alert('File upload or sanitization failed!');
+            alert('File upload failed!');
         }
 
         setIsUploading(false);
@@ -64,12 +57,12 @@ export default function Sanitization() {
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
             <Head>
-                <title>Sanitization Web</title>
+                <title>Web Image Upload - Unsanitize</title>
                 <meta property="og:title" content="My page title" key="title" />
             </Head>
             <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-2xl">
                 <h1 className="text-2xl mb-4 text-center text-gray-900 dark:text-gray-100">Upload File</h1>
-                <form onSubmit={handleSubmit} className="flex flex-col items-center gap-4">
+                <form onSubmit={handleSubmit} className="flex flex-col items-center">
                     <div 
                         className={`border-2 border-dashed rounded-lg p-8 w-full text-center ${dragActive ? 'border-blue-500' : 'border-gray-300 dark:border-gray-600'} ${isUploading ? 'pointer-events-none' : ''}`}
                         onDragOver={handleDragOver}
@@ -90,25 +83,17 @@ export default function Sanitization() {
                         )}
                         {file && <p className="mb-4 text-black dark:text-white">Selected File: {file.name}</p>}
                     </div>
-                    <h1>If a file has password, please input the password before sanitization process</h1>
-                    <input 
-                        type="password"
-                        placeholder="Enter file password"
-                        value={password}
-                        onChange={handlePasswordChange}
-                        className="mb-4 px-3 py-2 border rounded w-full text-gray-900 bg-gray-900 border-none active:border-none text-white"
-                    />
                     <button 
                         type="submit" 
-                        className={`px-4 py-2 rounded text-white ${isUploading ? 'bg-gray-500' : 'bg-blue-500 hover:bg-blue-600'}`}
+                        className={`mt-4 px-4 py-2 rounded text-white ${isUploading ? 'bg-gray-500' : 'bg-blue-500 hover:bg-blue-600'}`}
                         disabled={isUploading}
                     >
                         {isUploading ? 'Uploading...' : 'Upload'}
                     </button>
                 </form>
-                {sanitizedFilePath && (
+                {uploadedFilePath && (
                     <div className="mt-4">
-                        <a href={`http://localhost:80${sanitizedFilePath}`} target="_blank" rel="noopener noreferrer" className="text-blue-500">View Sanitized File</a>
+                        <a href={`http://localhost:80${uploadedFilePath}`} target="_blank" rel="noopener noreferrer" className="text-blue-500">View Sanitized File</a>
                     </div>
                 )}
             </div>
